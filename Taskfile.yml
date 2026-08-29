@@ -1,13 +1,13 @@
+---
 version: "3"
 
 # Build/publish tasks. In CI this would be a GitHub Actions workflow publishing on tag;
 # consumers only ever `docker pull`.
 
 vars:
-  IMAGE: '{{.IMAGE | default "liquibase-clickhouse"}}'
-  TAG: '{{.TAG | default "4.33.0-1"}}'
-  # Amazon ECR Public. Override with REGISTRY_IMAGE=... to publish elsewhere.
-  REGISTRY_IMAGE: '{{.REGISTRY_IMAGE | default "public.ecr.aws/a8c0b5z6/pubcr"}}'
+  IMAGE: "liquibase-clickhouse"
+  TAG: "{{.TAG | default \"4.33.0-1\"}}"
+  REGISTRY_IMAGE: "public.ecr.aws/a8c0b5z6/liquibase-clickhouse"
   BUILDER: liquibase-clickhouse-multiarch
 
 tasks:
@@ -39,7 +39,8 @@ tasks:
 
   publish:
     desc: Build for linux/amd64 + linux/arm64 and push to the registry
-    deps: [ensure-builder]
+    deps:
+      - ensure-builder
     summary: |
       Multi-arch on purpose: a published image gets pulled by CI runners that are almost
       always amd64, while this is likely built on an arm64 Mac. A single-arch push would
@@ -52,12 +53,9 @@ tasks:
       Run `task login` first.
     cmds:
       - >-
-        docker buildx build
-        --builder {{.BUILDER}}
-        --platform linux/amd64,linux/arm64
-        -t {{.REGISTRY_IMAGE}}:{{.TAG}}
-        --push .
-      - 'echo "pushed {{.REGISTRY_IMAGE}}:{{.TAG}}"'
+        docker buildx build --builder {{.BUILDER}} --platform linux/amd64,linux/arm64 -t {{.REGISTRY_IMAGE}}:{{.TAG}} --push
+        .
+      - "echo \"pushed {{.REGISTRY_IMAGE}}:{{.TAG}}\""
 
   verify-published:
     desc: Show the platforms of the published manifest
