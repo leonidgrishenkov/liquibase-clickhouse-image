@@ -1,0 +1,71 @@
+version: "3"
+
+# Build/publish tasks. In CI this would be a GitHub Actions workflow publishing on tag;
+# consumers only ever `docker pull`.
+
+vars:
+  IMAGE: '{{.IMAGE | default "liquibase-clickhouse"}}'
+  TAG: '{{.TAG | default "4.33.0-1"}}'
+  # Amazon ECR Public. Override with REGISTRY_IMAGE=... to publish elsewhere.
+  REGISTRY_IMAGE: '{{.REGISTRY_IMAGE | default "public.ecr.aws/a8c0b5z6/pubcr"}}'
+  BUILDER: liquibase-clickhouse-multiarch
+
+tasks:
+  default:
+    desc: List available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  build:
+    desc: Build and tag the image
+    cmds:
+      - docker build -t {{.IMAGE}}:{{.TAG}} -t {{.IMAGE}}:latest .
+
+  login:
+    desc: Log in to Amazon ECR Public (needs AWS credentials)
+    cmds:
+      # ECR Public auth tokens are only issued from us-east-1, whatever region you use.
+      - aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+
+  ensure-builder:
+    internal: true
+    # The default "docker" buildx driver cannot do multi-platform builds; a
+    # docker-container builder can. Created once, then reused.
+    status:
+      - docker buildx inspect {{.BUILDER}} >/dev/null 2>&1
+    cmds:
+      - docker buildx create --name {{.BUILDER}} --driver docker-container --bootstrap
+
+  publish:
+    desc: Build for linux/amd64 + linux/arm64 and push to the registry
+    deps: [ensure-builder]
+    summary: |
+      Multi-arch on purpose: a published image gets pulled by CI runners that are almost
+      always amd64, while this is likely built on an arm64 Mac. A single-arch push would
+      produce an image that silently fails to run for most consumers.
+
+      buildx cannot load a multi-platform result into the local docker image store, so this
+      builds and pushes in one step - there is no local copy to inspect afterwards. Use
+      `task build` for a local single-arch image to test with.
+
+      Run `task login` first.
+    cmds:
+      - >-
+        docker buildx build
+        --builder {{.BUILDER}}
+        --platform linux/amd64,linux/arm64
+        -t {{.REGISTRY_IMAGE}}:{{.TAG}}
+        --push .
+      - 'echo "pushed {{.REGISTRY_IMAGE}}:{{.TAG}}"'
+
+  verify-published:
+    desc: Show the platforms of the published manifest
+    cmds:
+      - docker buildx imagetools inspect {{.REGISTRY_IMAGE}}:{{.TAG}}
+
+  versions:
+    desc: Show the versions baked into the image
+    cmds:
+      - docker run --rm --entrypoint sh {{.IMAGE}}:{{.TAG}} -c 'ls -1 /liquibase/lib/*.jar'
+      - docker run --rm {{.IMAGE}}:{{.TAG}} --version | head -3
