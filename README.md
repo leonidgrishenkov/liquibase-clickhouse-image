@@ -3,11 +3,6 @@
 Liquibase with ClickHouse support baked in. This repo produces a versioned image;
 migration repos consume that image by tag and never rebuild it.
 
-```bash
-task build                                        # local, single-arch, for testing
-docker build -t liquibase-clickhouse:4.33.0-1 .   # or directly
-```
-
 ## Publishing
 
 Published to Amazon ECR Public at `public.ecr.aws/a8c0b5z6/liquibase-clickhouse`.
