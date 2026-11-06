@@ -10,7 +10,19 @@ docker build -t liquibase-clickhouse:4.33.0-1 .   # or directly
 
 ## Publishing
 
-Published to Amazon ECR Public at `public.ecr.aws/a8c0b5z6/pubc`:
+Published to Amazon ECR Public at `public.ecr.aws/a8c0b5z6/liquibase-clickhouse`.
+
+Releases go through CI: pushing a tag on a commit on `main` runs
+[`release.yml`](.github/workflows/release.yml). Its push job waits in the `release`
+environment until you approve it (**Review deployments** on the run page), then builds
+`linux/amd64` + `linux/arm64` and pushes the image tagged with the git tag, `latest` and
+the commit SHA. Tag as `<liquibase version>-<build>`:
+
+```bash
+git tag 4.33.0-2 && git push origin 4.33.0-2
+```
+
+The same can be done by hand:
 
 ```bash
 task login      # aws ecr-public get-login-password | docker login
@@ -21,7 +33,7 @@ task verify-published
 Consumers pull it with:
 
 ```bash
-docker pull public.ecr.aws/a8c0b5z6/pubc:4.33.0-1
+docker pull public.ecr.aws/a8c0b5z6/liquibase-clickhouse:4.33.0-1
 ```
 
 Two things `publish` handles that a plain `docker push` does not:

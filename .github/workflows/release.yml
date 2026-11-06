@@ -1,0 +1,32 @@
+# Publishes the image to public.ecr.aws/a8c0b5z6/liquibase-clickhouse on every
+# version tag, through the shared reusable workflow in
+# leonidgrishenkov/github-actions. The git tag becomes the image tag verbatim, so
+# tag as <liquibase version>-<build>, e.g. 4.33.0-2. Tags on commits that are not
+# on main fail the workflow's gate and publish nothing. The push itself runs in
+# this repository's `release` environment and waits for approval.
+#
+# Prerequisites in leonidgrishenkov/infra:
+#   * the ECR Public repository: cloud/aws/live/us-east-1/container/ecr/public/liquibase-clickhouse
+#   * the role CI assumes:       cloud/aws/live/us-east-1/iam/ecr/public/liquibase-clickhouse
+#     (trusts only repo:leonidgrishenkov/liquibase-clickhouse-image:environment:release)
+# and in this repository:
+#   * the `release` environment: leonidgrishenkov as required reviewer, admins
+#     can't bypass it, only tags matching *.* may deploy
+#   * the secret AWS_RELEASE_ROLE_ARN holding the role's ARN
+name: Release
+
+on:
+  push:
+    tags: ['*.*']
+
+jobs:
+  docker:
+    permissions:
+      contents: read   # checkout
+      id-token: write  # OIDC for the AWS role
+    uses: leonidgrishenkov/github-actions/.github/workflows/docker-aws-ecr-public.yaml@main
+    with:
+      image-name: liquibase-clickhouse
+      registry-alias: a8c0b5z6
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_RELEASE_ROLE_ARN }}

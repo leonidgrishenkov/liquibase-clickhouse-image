@@ -1,7 +1,7 @@
 ---
 version: "3"
 
-# Build/publish tasks. In CI this would be a GitHub Actions workflow publishing on tag;
+# Build/publish tasks for local runs. CI publishes on tag (.github/workflows/release.yml);
 # consumers only ever `docker pull`.
 
 vars:
